@@ -1,0 +1,27 @@
+{
+  "name": "json-schema-lang",
+  "version": "0.0.0",
+  "description": "Compact Syntax for JSON Schema validation.",
+  "main": "index.js",
+  "scripts": {
+    "test": "gulp test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/DubFriend/json-schema-lang.git"
+  },
+  "keywords": [
+    "JSON",
+    "Schema",
+    "validation",
+    "syntax",
+    "language",
+    "parser"
+  ],
+  "author": "Brian Detering",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DubFriend/json-schema-lang/issues"
+  },
+  "homepage": "https://github.com/DubFriend/json-schema-lang#readme"
+}

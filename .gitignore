@@ -1,0 +1,6 @@
+.DS_Store
+node_modules
+public/bower
+public/dist
+.env
+npm-debug.log
