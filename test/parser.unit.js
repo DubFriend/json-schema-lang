@@ -112,6 +112,29 @@ describe('parser.unit', () => {
         });
     });
 
+    it('should handle comment lines (starting with "//")', () => {
+        expect(parser(`
+            // a comment
+            Object
+                a !String
+                // here is a comment
+                b Number
+        `)).to.deep.equal({
+            type: 'object',
+            props: [
+                {
+                    field: 'a',
+                    type: 'string',
+                    required: true
+                },
+                {
+                    field: 'b',
+                    type: 'number'
+                }
+            ]
+        });
+    });
+
     it('should parse nested objects', () => {
         expect(parser(`id Object
                 a !Object
@@ -149,6 +172,20 @@ describe('parser.unit', () => {
                     type: 'number'
                 }
             ]
+        });
+    });
+
+    it('should handle property dependencies', () => {
+        expect(parser(`
+            Object
+              a[b,"c"] String
+        `)).to.deep.equal({
+            type: 'object',
+            props: [{
+                field: 'a',
+                type: 'string',
+                dependentProps: ['b', 'c']
+            }]
         });
     });
 });

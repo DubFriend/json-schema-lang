@@ -78,20 +78,22 @@ Example Object title:"Example Schema" description:"Example Description"
   string !String minLength:2 maxLength:8 pattern:/^[a-z]+/
   number Number|Integer multipleOf:3 minimum:1 exclusiveMinimum:1 maximum:5 exclusiveMaximum:5
   object Object additionalProperties:false minProperties:2 maxProperties:5
-    // express propery dependencies
+    // express property dependencies
     a["b 1", c]
     "b 1" Number
     c String
     // express schema extension dependencies
     #dependencies
-      "b 1" minProperties:3
-        d! String
+      // if "b 1" field is set then require the following schema updates
+      "b 1" minProperties: 3
+        d !String
     // expressed match patterns for keys with
     #patternProperties
+      // any additional properties that start with "foo" must be type string.
       /^foo/ String
-      /^bar/ Object
+      /^bar/ Object additionalProperties:false
         baz Boolean
-    // Can match additional unmatching properties to a schema
+    // Can match additional non matching properties to a schema
     #additionalProperties String
   array Array minItems:3 maxItems:5 uniqueItems:true
     String
