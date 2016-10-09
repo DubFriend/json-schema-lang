@@ -188,4 +188,63 @@ describe('parser.unit', () => {
             }]
         });
     });
+
+    it('should handle patternProperties', () => {
+        expect(parser(`
+            Object
+              @patternProperties
+                  /^bar/ Object additionalProperties:false
+                    baz Boolean
+                  /^foo/ String
+              a String
+        `)).to.deep.equal({
+            type: 'object',
+            patternProperties: {
+                '^bar': {
+                    type: 'object',
+                    options: { additionalProperties: false },
+                    props: [{ field: 'baz', type: 'boolean' }]
+                },
+                '^foo': { type: 'string' }
+            },
+            props: [{ field: 'a', type: 'string' }]
+        });
+    });
+
+    it('should handle additionalProperties', () => {
+        expect(parser(`
+            Object
+              @additionalProperties Object
+                  a String
+        `)).to.deep.equal({
+            type: 'object',
+            props: [],
+            additionalProperties: {
+                type: 'object',
+                props: [{ field: 'a', type: 'string' }]
+            }
+        });
+    });
+
+    it('should handle schema extension dependencies', () => {
+        expect(parser(`
+            Object
+              a String
+              @dependencies
+                a foo:2
+                  d !String
+                b
+                  e String|Number
+        `)).to.deep.equal({
+            type: 'object',
+            props: [{ field: 'a', type: 'string' }],
+            dependencies: {
+                a: {
+                    options: { foo: 2 },
+                    props: [{ field: 'd', type: 'string', required: true }]
+                },
+                b: { props: [{ field: 'e', type: ['string', 'number'] }] }
+            }
+        });
+    });
 });

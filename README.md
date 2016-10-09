@@ -83,18 +83,18 @@ Example Object title:"Example Schema" description:"Example Description"
     "b 1" Number
     c String
     // express schema extension dependencies
-    #dependencies
+    @dependencies
       // if "b 1" field is set then require the following schema updates
-      "b 1" minProperties: 3
+      "b 1" minProperties:3
         d !String
     // expressed match patterns for keys with
-    #patternProperties
+    @patternProperties
       // any additional properties that start with "foo" must be type string.
       /^foo/ String
       /^bar/ Object additionalProperties:false
         baz Boolean
     // Can match additional non matching properties to a schema
-    #additionalProperties String
+    @additionalProperties String
   array Array minItems:3 maxItems:5 uniqueItems:true
     String
   // additionalItems used when tuple to control if allowed other items in the array
@@ -109,7 +109,8 @@ Example Object title:"Example Schema" description:"Example Description"
   allOfExample allOf
     !String minimumLength:5
     Integer
-  notAString not String
+  notAString
+    @not String
 ```
 
 ```js

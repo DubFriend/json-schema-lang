@@ -2,6 +2,12 @@
 
 const _ = require('underscore');
 
+const tokenize = line => _.compact(line.split(/\s/));
+
+const stringToken = s => String(
+    /^".*"$/.test(s) ? s.replace(/^"/, '').replace(/"$/, '') : s
+);
+
 const parseLine = (lineUntrimmed, isFirst) => {
     const line = lineUntrimmed.trim();
 
@@ -15,11 +21,7 @@ const parseLine = (lineUntrimmed, isFirst) => {
         true
     );
 
-    const hasName = () => tokens.length > 1 && isType(tokens[1]);
-
-    const stringToken = s => String(
-        /^".*"$/.test(s) ? s.replace(/^"/, '').replace(/"$/, '') : s
-    );
+    const hasName = tokens => tokens.length > 1 && isType(tokens[1]);
 
     const parseType = typeString => {
         const types = _.map(typeString.split('|'), t => t.toLowerCase());
@@ -82,11 +84,11 @@ const parseLine = (lineUntrimmed, isFirst) => {
 
     const parseName = name => name.replace(regEndingBrackets, '');
 
-    const tokens = _.compact(line.split(/\s/));
+    const tokens = tokenize(line);
 
     let parsed = {};
 
-    if(hasName()) {
+    if(hasName(tokens)) {
         parsed = parseType(tokens[1]);
         if(isFirst) {
             parsed.id = `/${parseName(tokens[0])}`;
@@ -121,25 +123,85 @@ module.exports = string => {
         return match ? match.length : 0;
     };
 
-    const lines = _.filter(
-        _.map(string.split(/\n/), l => l.replace(/\s+$/, '')),
-        l => l && !/^\s*\/\/.*$/.test(l)
-    );
-
-    const parse = (ctx, baseIndent) => {
+    const parse = (ctx, lines, baseIndent) => {
         if(lines.length) {
             ctx.props = [];
         }
 
+        const extractLeadingSubLines = (lines, baseIndent) => {
+            let l = lines.shift();
+            let subLines = [];
+
+            while(l && getIndent(l) > baseIndent) {
+                subLines.push(l);
+                l = lines.shift();
+            }
+
+            if(l) {
+                lines.unshift(l);
+            }
+
+            return subLines;
+        };
+
+        const parsePatternProperties = lines => {
+            let l = lines.shift();
+            const indent = getIndent(l);
+            let parsed = {};
+            while(l) {
+                const tokens = tokenize(l);
+                const firstToken = tokens.shift();
+                const key = firstToken.replace(/^\//, '').replace(/\/$/, '');
+                const subLines = [tokens.join(' ')].concat(extractLeadingSubLines(lines, indent));
+                parsed[key] = parseSchema(subLines);
+                l = lines.shift();
+            }
+            return parsed;
+        };
+
+        const parseSchemaAdditionDependencies = lines => {
+            let l = lines.shift();
+            const indent = getIndent(l);
+            let parsed = {};
+            while(l) {
+                const tokens = tokenize(l);
+                const key = stringToken(tokens.shift());
+                const subLines = [`Object ${tokens.join(' ')}`].concat(extractLeadingSubLines(lines, indent));
+                parsed[key] = _.omit(parseSchema(subLines), 'type');
+                l = lines.shift();
+            }
+            return parsed;
+        };
+
         let l = lines.shift();
         while(l) {
             let indentLevel = getIndent(l);
+
             if(indentLevel === baseIndent) {
-                ctx.props.push(parseLine(l));
+                if(/^\s*@patternProperties/.test(l)) {
+                    ctx.patternProperties = parsePatternProperties(
+                        extractLeadingSubLines(lines, indentLevel)
+                    );
+                }
+                else if(/^\s*@additionalProperties/.test(l)) {
+                    ctx.additionalProperties = parseSchema(
+                        [l.replace(/^\s*@additionalProperties/, '')].concat(
+                            extractLeadingSubLines(lines, indentLevel)
+                        )
+                    );
+                }
+                else if(/^\s*@dependencies/.test(l)) {
+                    ctx.dependencies = parseSchemaAdditionDependencies(
+                        extractLeadingSubLines(lines, indentLevel)
+                    );
+                }
+                else {
+                    ctx.props.push(parseLine(l));
+                }
             }
             else if(indentLevel > baseIndent) {
                 lines.unshift(l);
-                parse(_.last(ctx.props), indentLevel);
+                parse(_.last(ctx.props), lines, indentLevel);
             }
             else {
                 lines.unshift(l);
@@ -149,8 +211,15 @@ module.exports = string => {
         }
     };
 
-    const l = lines.shift();
-    let parsed = parseLine(l, true);
-    parse(parsed, getIndent(_.first(lines)));
-    return parsed;
+    const parseSchema = lines => {
+        const l = lines.shift();
+        let parsed = parseLine(l, true);
+        parse(parsed, lines, getIndent(_.first(lines)));
+        return parsed;
+    };
+
+    return parseSchema(_.filter(
+        _.map(string.split(/\n/), l => l.replace(/\s+$/, '')),
+        l => l && !/^\s*\/\/.*$/.test(l)
+    ));
 };
